@@ -17,10 +17,10 @@ class Chopstick {
     mutex *chopstick;
 
     Chopstick(int id, mutex *chopstick);
-    
+
     void putDown();
 
-    void pickUp();
+    bool pickUp();
 };
 
 class Philosopher {
@@ -37,6 +37,8 @@ class Philosopher {
     void eat();
 
     void wait();
+
+    void think_and_eat();
 };
 
 #endif
