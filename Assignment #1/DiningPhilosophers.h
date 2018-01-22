@@ -26,11 +26,10 @@ class Chopstick {
 class Philosopher {
   public:
     int id;
-    int state;
     Chopstick *left_chopstick;
     Chopstick *right_chopstick;
 
-    Philosopher(int id, int state, Chopstick *left_chopstick, Chopstick *right_chopstick);
+    Philosopher(int id, Chopstick *left_chopstick, Chopstick *right_chopstick);
 
     void think();
 

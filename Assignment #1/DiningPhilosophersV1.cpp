@@ -35,41 +35,48 @@ bool Chopstick::pickUp() {
 }
 
 // PHILOSOPHER DEFINITIONS
-Philosopher::Philosopher(int temp_id, int temp_state, Chopstick *temp_left_chopstick, Chopstick *temp_right_chopstick) :
-  id(temp_id), state(temp_state), left_chopstick(temp_left_chopstick), right_chopstick(temp_right_chopstick) {}
+Philosopher::Philosopher(int temp_id, Chopstick *temp_left_chopstick, Chopstick *temp_right_chopstick) :
+  id(temp_id), left_chopstick(temp_left_chopstick), right_chopstick(temp_right_chopstick) {}
 
 void Philosopher::think() {
   string p_out = "Philosopher " + to_string(id) + " is thinking.\n";
-  cout << p_out << flush;
+  cout << p_out;
 
-  state = THINKING;
-  left_chopstick->putDown();
-  right_chopstick->putDown();
-  this_thread::sleep_for(chrono::milliseconds(WAIT_TIME));
+  wait();
 }
 
 void Philosopher::eat() {
   // Only eat if left chopstick can be picked up. If the left one cannot be
   // picked up, then the right one cannot either since both need to be active
   // to reach an EATING state
-  if(left_chopstick->pickUp())
-    if(right_chopstick->pickUp()) {
-      state = EATING;
 
-      string p_out = "Philosopher " + to_string(id) + " is eating.\n";
-      cout << p_out << flush;
-    }
+  while(!left_chopstick->pickUp())
+    wait();
+
+  while(!right_chopstick->pickUp())
+    wait();
+
+  string p_out;
+  p_out = "Philosopher " + to_string(id) + " is eating.\n";
+  cout << p_out;
+
+  wait();
 }
 
 void Philosopher::wait() {
-  state = WAITING;
   this_thread::sleep_for(chrono::milliseconds(WAIT_TIME));
 }
 
 void Philosopher::think_and_eat() {
-  think();
   eat();
-  wait();
+
+  left_chopstick->putDown();
+  right_chopstick->putDown();
+
+  think();
+
+  string p_out = "Philosopher " + to_string(id) + " is hungry.\n";
+  cout << p_out;
 }
 
 int main(void) {
@@ -80,23 +87,24 @@ int main(void) {
 
   // Uncomment if philosophers will have probabilistic hunger/thinking
   //srand(std::time(NULL));
+
   // Initialize chopsticks
   for(int i = 0; i < NUM_CHOPSTICKS; i++)
     chopsticks.push_back(new Chopstick(i, new mutex()));
 
   // Initialize philosophers and assign them their neighboring chopsticks
   for(int i = 0; i < NUM_PHILOSOPHERS; i++)
-    philosophers.push_back(new Philosopher(i, THINKING, chopsticks[i], chopsticks[(i + 1) % NUM_PHILOSOPHERS]));
+    philosophers.push_back(new Philosopher(i, chopsticks[i], chopsticks[(i + 1) % NUM_PHILOSOPHERS]));
 
   do {
 
     for(int i = 0; i < NUM_PHILOSOPHERS; i++)
       threads.push_back(new thread(&Philosopher::think_and_eat, philosophers[i]));
 
-    if((stop = getchar()) != 'n')
-      break;
-      
-  } while(1);
+    string p_out = "Continue dining philosophers simulation? (y/n)\n";
+    cout << p_out;
+
+  } while((stop = getchar()) != 'n');
 
   for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
 }
