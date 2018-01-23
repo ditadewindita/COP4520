@@ -52,12 +52,21 @@ void Philosopher::eat() {
   // picked up, then the right one cannot either since both need to be active
   // to reach an EATING state
 
-  // Only pick up the chopstick if its availble
-  while(!left_chopstick->pickUp())
-    wait();
+  // Pickup chopstick in an order based on the philosopher ID to prevent deadlock
+  if(id % 2 != 0) {
+    while(!left_chopstick->pickUp())
+      wait();
 
-  while(!right_chopstick->pickUp())
-    wait();
+    while(!right_chopstick->pickUp())
+      wait();
+  }
+  else {
+    while(!right_chopstick->pickUp())
+      wait();
+
+    while(!left_chopstick->pickUp())
+      wait();
+  }
 
   string p_out;
   p_out = "Philosopher " + to_string(id) + " is eating.\n";
