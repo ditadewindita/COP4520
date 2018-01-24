@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <queue>
 #include "DiningPhilosophers.h"
 
 #define NUM_PHILOSOPHERS 5
@@ -80,40 +81,22 @@ void Philosopher::wait() {
 }
 
 void Philosopher::think_and_eat() {
-  while(1) {
-    eat();
+  eat();
 
-    left_chopstick->putDown();
-    right_chopstick->putDown();
+  left_chopstick->putDown();
+  right_chopstick->putDown();
 
-    think();
+  think();
 
-    string p_out = "Philosopher " + to_string(id) + " is hungry.\n";
-    cout << p_out;
-  }
-}
-
-void getInput(vector<thread*> threads) {
-  char c;
-
-  while((c = getchar()) != 'n');
-
-  cout << "size of threads: " << threads.size() << "\n";
-  for(int i = 0; i < NUM_PHILOSOPHERS; i++) {
-    cout << i << endl;
-    threads[i]->join();
-  }
+  string p_out = "Philosopher " + to_string(id) + " is hungry.\n";
+  cout << p_out;
 }
 
 int main(void) {
+  char stop;
   vector<Philosopher*> philosophers;
   vector<Chopstick*> chopsticks;
   vector<thread*> threads;
-  thread *inputThread;
-  //atomic<bool> stop = new atomic<bool(false);
-
-  // TODO:
-  // MAKE DESTROYERS FOR NEW CLASSES
 
   // Uncomment if philosophers will have probabilistic hunger/thinking
   //srand(std::time(NULL));
@@ -122,15 +105,20 @@ int main(void) {
   for(int i = 0; i < NUM_CHOPSTICKS; i++)
     chopsticks.push_back(new Chopstick(i, new mutex()));
 
-  // Initialize philosophers and  assign them their neighboring chopsticks
+  // Initialize philosophers and assign them their neighboring chopsticks
   for(int i = 0; i < NUM_PHILOSOPHERS; i++)
     philosophers.push_back(new Philosopher(i, chopsticks[i], chopsticks[(i + 1) % NUM_PHILOSOPHERS]));
 
-  inputThread = new thread(getInput, threads);
+  while(1) {
 
-  for(int i = 0; i < NUM_PHILOSOPHERS; i++)
-    threads.push_back(new thread(&Philosopher::think_and_eat, philosophers[i]));
+    for(int i = 0; i < NUM_PHILOSOPHERS; i++)
+      threads.push_back(new thread(&Philosopher::think_and_eat, philosophers[i]));
 
-  inputThread->join();
+    if((stop = getchar()) == 'n') {
+      for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
+      break;
+    }
+  }
 
+  //for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
 }
