@@ -70,20 +70,13 @@ int main() {
 
   int start = clock();
 
-  // segmented_sieve(primes, 1, MAX_PRIME);
-  //
-  // int stop = clock();
-
   for(int i = 0; i < NUM_THREADS && max <= MAX_PRIME; i++){
     threads_list.push_back(thread(segmented_sieve, primes, min, max));
     min = max + 1;
     max *= 10;
   }
 
-  // std::cout << "Spawned threads.\n";
-
-  for(vector<thread>::iterator it = threads_list.begin(); it != threads_list.end(); ++it)
-    (*it).join();
+  for_each(threads_list.begin(), threads_list.end(), mem_fn(&thread::join));
 
   int stop = clock();
 
