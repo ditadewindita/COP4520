@@ -30,7 +30,7 @@ class Philosopher {
     int id;
     int state;
     int currNum;
-    //long foodWaitTime;
+    long foodWaitTime;
     Chopstick *left_chopstick;
     Chopstick *right_chopstick;
 
@@ -42,20 +42,20 @@ class Philosopher {
 
     void eat();
 
-    void wait(int wait_time);
+    void wait();
 
     void hungry();
 
 };
-
-class Counter {
-  public:
-    long count;
-    mutex *lock;
-
-    Counter(mutex *lock);
-
-    long getAndIncrement();
-};
+//
+// class Counter {
+//   public:
+//     long count;
+//     mutex *lock;
+//
+//     Counter(mutex *lock);
+//
+//     long getAndIncrement();
+// };
 
 #endif

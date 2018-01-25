@@ -13,37 +13,6 @@
 #define EAT_TIME 150
 #define WAIT_TIME 100
 
-// SAME TWO PHILOSOPHERS ALWAYS EATING
-
-// NOTES:
-// Method to make program wait - for eating/thinking 'a while'
-// ith philosophers have left chopstick (i) and right chopstick (i + 1)
-// Lock mutex when chopstick is 'picked' up
-// MAKE MUTEXES BEFORE PHILOSOPHERS
-// Deadlock when philosophers try to take same chopstick
-// Starvation when some number of philosophers keep eating and not letting
-//  others eat
-// Each philosopher eats, pickup chopstick, thinks, put down chopsticks
-// mutex.try_lock
-
-// think -> eat -> wait
-
-// COUNTER DEFINITIONS
-Counter::Counter(mutex *temp_mutex) : lock(temp_mutex) {}
-
-long Counter::getAndIncrement() {
-  long temp = count;
-
-  // If someone else is taking a number, ensure they do not take the same number
-  // at the same time
-  if(lock->try_lock()) {
-    count++;
-    lock->unlock();
-  }
-
-  return temp;
-}
-
 // CHOPSTICK DEFINITIONS
 Chopstick::Chopstick(int temp_id, mutex *temp_chopstick) : id(temp_id), chopstick(temp_chopstick) {}
 
@@ -96,6 +65,7 @@ void Philosopher::eat() {
   }
 
   state = EATING;
+  foodWaitTime = 0;
 
   string p_out;
   p_out = "Philosopher " + to_string(id) + " is eating.\n";
@@ -114,7 +84,6 @@ void Philosopher::hungry() {
 // Generic wait call for a philosopher
 void Philosopher::wait(int wait_time) {
   this_thread::sleep_for(chrono::milliseconds(wait_time));
-
 }
 
 bool can_eat(Philosopher *p, Philosopher *left_p, Philosopher *right_p) {
@@ -122,26 +91,25 @@ bool can_eat(Philosopher *p, Philosopher *left_p, Philosopher *right_p) {
   if(left_p->state == EATING || right_p->state == EATING)
     return 0;
 
-  // If left philosopher is hungry and has higher eating priority than current
-  // philosopher, he also cannot eat
-  if(left_p->state == HUNGRY && left_p->currNum < p->currNum)
+  // If left philosopher is hungry and has been waiting wayyy more than the current
+  // philosopher, he cannot eat yet
+  if(left_p->state == HUNGRY && left_p->foodWaitTime > (p->foodWaitTime * 5))
     return 0;
 
   // Same as above, but in comparison to the right philosopher
-  if(right_p->state == HUNGRY && right_p->currNum < p->currNum)
+  if(right_p->state == HUNGRY && right_p->foodWaitTime > (p->foodWaitTime * 5))
     return 0;
 
   return 1;
 }
 
-void think_and_eat(atomic<bool> &stop, Philosopher *p, Philosopher *left_p, Philosopher *right_p, Counter *counter) {
+void think_and_eat(atomic<bool> &stop, Philosopher *p, Philosopher *left_p, Philosopher *right_p) {
   while(!stop) {
 
-    if(p->state == HUNGRY)
-      p->currNum = counter->getAndIncrement();
-
-    while(p->state == HUNGRY && !can_eat(p, left_p, right_p))
+    while(!can_eat(p, left_p, right_p)) {
       p->wait(WAIT_TIME);
+      p->foodWaitTime += WAIT_TIME;
+    }
 
     p->eat();
 
@@ -149,42 +117,37 @@ void think_and_eat(atomic<bool> &stop, Philosopher *p, Philosopher *left_p, Phil
     p->right_chopstick->putDown();
 
     p->think();
+
     p->hungry();
   }
 }
 
-int main(void) {
-  //int num_philosophers = (argc < 1) ? DEFAULT_NUM_PHILOSOPHERS : atoi(argv[1]);
-  //int num_chopsticks = (argc < 1) ? DEFAULT_NUM_CHOPSTICKS : num_philosophers;
+int main(int argc, char **argv) {
+  int num_philosophers = (argc < 2) ? DEFAULT_NUM_PHILOSOPHERS : atoi(argv[1]);
+  int num_chopsticks = (argc < 2) ? DEFAULT_NUM_CHOPSTICKS : num_philosophers;
 
   vector<Philosopher*> philosophers;
   vector<Chopstick*> chopsticks;
   vector<thread*> threads;
-  queue<Philosopher*> q;
   atomic<bool> stop(false);
-  Counter *counter = new Counter(new mutex());
   char c;
 
-  // Uncomment if philosophers will have probabilistic hunger/thinking
-  //srand(std::time(NULL));
-
   // Initialize chopsticks
-  for(int i = 0; i < NUM_CHOPSTICKS; i++)
+  for(int i = 0; i < num_chopsticks; i++)
     chopsticks.push_back(new Chopstick(i, new mutex()));
 
   // Initialize philosophers and  assign them their neighboring chopsticks
-  for(int i = 0; i < NUM_PHILOSOPHERS; i++)
-    philosophers.push_back(new Philosopher(i, chopsticks[i], chopsticks[(i + 1) % NUM_PHILOSOPHERS]));
+  for(int i = 0; i < num_philosophers; i++)
+    philosophers.push_back(new Philosopher(i, chopsticks[i], chopsticks[(i + 1) % num_philosophers]));
 
-  Philosopher *last_p = philosophers[NUM_PHILOSOPHERS - 1];
+  Philosopher *last_p = philosophers[num_philosophers - 1];
 
-  for(int i = 0; i < NUM_PHILOSOPHERS; i++) {
-    threads.push_back(new thread(think_and_eat, ref(stop), philosophers[i], last_p, philosophers[(i + 1) % NUM_PHILOSOPHERS], counter));
+  for(int i = 0; i < num_philosophers; i++) {
+    threads.push_back(new thread(think_and_eat, ref(stop), philosophers[i], last_p, philosophers[(i + 1) % num_philosophers]));
     last_p = philosophers[i];
   }
 
   while((c = getchar()) != 'n');
-
   stop = true;
 
   for_each(threads.begin(), threads.end(), mem_fn(&thread::join));

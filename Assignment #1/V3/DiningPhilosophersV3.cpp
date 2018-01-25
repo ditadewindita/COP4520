@@ -13,21 +13,6 @@
 #define EAT_TIME 150
 #define WAIT_TIME 100
 
-// SAME TWO PHILOSOPHERS ALWAYS EATING
-
-// NOTES:
-// Method to make program wait - for eating/thinking 'a while'
-// ith philosophers have left chopstick (i) and right chopstick (i + 1)
-// Lock mutex when chopstick is 'picked' up
-// MAKE MUTEXES BEFORE PHILOSOPHERS
-// Deadlock when philosophers try to take same chopstick
-// Starvation when some number of philosophers keep eating and not letting
-//  others eat
-// Each philosopher eats, pickup chopstick, thinks, put down chopsticks
-// mutex.try_lock
-
-// think -> eat -> wait
-
 // COUNTER DEFINITIONS
 Counter::Counter(mutex *temp_mutex) : lock(temp_mutex) {}
 
@@ -136,6 +121,7 @@ bool can_eat(Philosopher *p, Philosopher *left_p, Philosopher *right_p) {
 void think_and_eat(atomic<bool> &stop, Philosopher *p, Philosopher *left_p, Philosopher *right_p, Counter *counter) {
   while(!stop) {
 
+    // If they are hungry, take a number to 'wait in line'
     if(p->state == HUNGRY)
       p->currNum = counter->getAndIncrement();
 
@@ -161,8 +147,6 @@ int main(void) {
   Counter *counter = new Counter(new mutex());
   char c;
 
-  // Uncomment if philosophers will have probabilistic hunger/thinking
-  //srand(std::time(NULL));
 
   // Initialize chopsticks
   for(int i = 0; i < NUM_CHOPSTICKS; i++)
@@ -180,7 +164,6 @@ int main(void) {
   }
 
   while((c = getchar()) != 'n');
-
   stop = true;
 
   for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
