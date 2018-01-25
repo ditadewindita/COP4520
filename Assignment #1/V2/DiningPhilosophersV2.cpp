@@ -42,33 +42,35 @@ void Philosopher::eat() {
 
   // Pick up the lower numbered chopstick first as to not deadlock
   if(left_chopstick->id < right_chopstick->id) {
-    if(left_chopstick->pickUp())
-      if(right_chopstick->pickUp()) {
-        string p_out;
-        p_out = "Philosopher " + to_string(id) + " is eating.\n";
-        cout << p_out;
 
-        right_chopstick->putDown();
-        left_chopstick->putDown();
+    while(!left_chopstick->pickUp());
+    while(!right_chopstick->pickUp());
 
-        p_out = "Philosopher " + to_string(id) + " is thinking.\n";
-        cout << p_out;
-      }
+    string p_out;
+    p_out = "Philosopher " + to_string(id) + " is eating.\n";
+    cout << p_out;
+
+    right_chopstick->putDown();
+    left_chopstick->putDown();
+
+    p_out = "Philosopher " + to_string(id) + " is thinking.\n";
+    cout << p_out;
   }
 
   if(right_chopstick->id < left_chopstick->id) {
-    if(right_chopstick->pickUp())
-      if(left_chopstick->pickUp()) {
-        string p_out;
-        p_out = "Philosopher " + to_string(id) + " is eating.\n";
-        cout << p_out;
 
-        left_chopstick->putDown();
-        right_chopstick->putDown();
+    while(!right_chopstick->pickUp());
+    while(!left_chopstick->pickUp());
 
-        p_out = "Philosopher " + to_string(id) + " is thinking.\n";
-        cout << p_out;
-      }
+    string p_out;
+    p_out = "Philosopher " + to_string(id) + " is eating.\n";
+    cout << p_out;
+
+    left_chopstick->putDown();
+    right_chopstick->putDown();
+
+    p_out = "Philosopher " + to_string(id) + " is thinking.\n";
+    cout << p_out;
   }
 
   wait();
