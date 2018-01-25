@@ -9,6 +9,8 @@
 
 #define NUM_PHILOSOPHERS 5
 #define NUM_CHOPSTICKS 5
+#define THINK_TIME 200
+#define EAT_TIME 150
 #define WAIT_TIME 100
 
 // SAME TWO PHILOSOPHERS ALWAYS EATING
@@ -26,8 +28,28 @@
 
 // think -> eat -> wait
 
+// COUNTER DEFINITIONS
+Counter::Counter(mutex *temp_mutex) : lock(temp_mutex) {}
+
+long Counter::getAndIncrement() {
+  long temp = count;
+
+  // If someone else is taking a number, ensure they do not take the same number
+  // at the same time
+  if(lock->try_lock()) {
+    count++;
+    lock->unlock();
+  }
+
+  return temp;
+}
+
 // CHOPSTICK DEFINITIONS
 Chopstick::Chopstick(int temp_id, mutex *temp_chopstick) : id(temp_id), chopstick(temp_chopstick) {}
+
+Chopstick::~Chopstick() {
+  delete chopstick;
+}
 
 void Chopstick::putDown() {
   chopstick->unlock();
@@ -41,62 +63,103 @@ bool Chopstick::pickUp() {
 Philosopher::Philosopher(int temp_id, Chopstick *temp_left_chopstick, Chopstick *temp_right_chopstick) :
   id(temp_id), left_chopstick(temp_left_chopstick), right_chopstick(temp_right_chopstick) {}
 
+Philosopher::~Philosopher() {
+  delete left_chopstick;
+  delete right_chopstick;
+}
+
 void Philosopher::think() {
+  state = THINKING;
   string p_out = "Philosopher " + to_string(id) + " is thinking.\n";
   cout << p_out;
 
-  wait();
+  wait(THINK_TIME);
 }
 
 void Philosopher::eat() {
-  // Only eat if left chopstick can be picked up. If the left one cannot be
-  // picked up, then the right one cannot either since both need to be active
-  // to reach an EATING state
 
-  // Pickup chopstick in an order based on the philosopher ID to prevent deadlock
+  // Pickup chopstick in an order based on the philosopher ID to prevent deadlock,
+  // and while they cannot pickup chopsticks, have them wait
   if(id % 2 != 0) {
     while(!left_chopstick->pickUp())
-      wait();
+      wait(WAIT_TIME);
 
     while(!right_chopstick->pickUp())
-      wait();
+      wait(WAIT_TIME);
   }
   else {
     while(!right_chopstick->pickUp())
-      wait();
+      wait(WAIT_TIME);
 
     while(!left_chopstick->pickUp())
-      wait();
+      wait(WAIT_TIME);
   }
+
+  state = EATING;
 
   string p_out;
   p_out = "Philosopher " + to_string(id) + " is eating.\n";
   cout << p_out;
 
-  wait();
+  wait(EAT_TIME);
 }
 
-void Philosopher::wait() {
-  this_thread::sleep_for(chrono::milliseconds(WAIT_TIME));
-}
-
-void Philosopher::think_and_eat() {
-  eat();
-
-  left_chopstick->putDown();
-  right_chopstick->putDown();
-
-  think();
+void Philosopher::hungry() {
+  state = HUNGRY;
 
   string p_out = "Philosopher " + to_string(id) + " is hungry.\n";
   cout << p_out;
 }
 
+// Generic wait call for a philosopher
+void Philosopher::wait(int wait_time) {
+  this_thread::sleep_for(chrono::milliseconds(wait_time));
+}
+
+bool can_eat(Philosopher *p, Philosopher *left_p, Philosopher *right_p) {
+  // If either neighbor is eating, current philosopher cannot eat
+  if(left_p->state == EATING || right_p->state == EATING)
+    return 0;
+
+  // If left philosopher is hungry and has higher eating priority than current
+  // philosopher, he also cannot eat
+  if(left_p->state == HUNGRY && left_p->currNum < p->currNum)
+    return 0;
+
+  // Same as above, but in comparison to the right philosopher
+  if(right_p->state == HUNGRY && right_p->currNum < p->currNum)
+    return 0;
+
+  return 1;
+}
+
+void think_and_eat(atomic<bool> &stop, Philosopher *p, Philosopher *left_p, Philosopher *right_p, Counter *counter) {
+  while(!stop) {
+
+    if(p->state == HUNGRY)
+      p->currNum = counter->getAndIncrement();
+
+    while(!can_eat(p, left_p, right_p))
+      p->wait(WAIT_TIME);
+
+    p->eat();
+
+    p->left_chopstick->putDown();
+    p->right_chopstick->putDown();
+
+    p->think();
+    p->hungry();
+  }
+}
+
 int main(void) {
-  char stop;
   vector<Philosopher*> philosophers;
   vector<Chopstick*> chopsticks;
   vector<thread*> threads;
+  queue<Philosopher*> q;
+  atomic<bool> stop(false);
+  Counter *counter = new Counter(new mutex());
+  char c;
 
   // Uncomment if philosophers will have probabilistic hunger/thinking
   //srand(std::time(NULL));
@@ -105,20 +168,20 @@ int main(void) {
   for(int i = 0; i < NUM_CHOPSTICKS; i++)
     chopsticks.push_back(new Chopstick(i, new mutex()));
 
-  // Initialize philosophers and assign them their neighboring chopsticks
+  // Initialize philosophers and  assign them their neighboring chopsticks
   for(int i = 0; i < NUM_PHILOSOPHERS; i++)
     philosophers.push_back(new Philosopher(i, chopsticks[i], chopsticks[(i + 1) % NUM_PHILOSOPHERS]));
 
-  while(1) {
+  Philosopher *last_p = philosophers[NUM_PHILOSOPHERS - 1];
 
-    for(int i = 0; i < NUM_PHILOSOPHERS; i++)
-      threads.push_back(new thread(&Philosopher::think_and_eat, philosophers[i]));
-
-    if((stop = getchar()) == 'n') {
-      for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
-      break;
-    }
+  for(int i = 0; i < NUM_PHILOSOPHERS; i++) {
+    threads.push_back(new thread(think_and_eat, ref(stop), philosophers[i], last_p, philosophers[(i + 1) % NUM_PHILOSOPHERS], counter));
+    last_p = philosophers[i];
   }
 
-  //for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
+  while((c = getchar()) != 'n');
+
+  stop = true;
+
+  for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
 }

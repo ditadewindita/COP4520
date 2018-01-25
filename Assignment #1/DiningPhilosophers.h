@@ -7,7 +7,7 @@
 // Philosopher states
 #define THINKING 0
 #define EATING 1
-#define WAITING 2
+#define HUNGRY 2
 
 using namespace std;
 
@@ -18,6 +18,8 @@ class Chopstick {
 
     Chopstick(int id, mutex *chopstick);
 
+    ~Chopstick();
+
     void putDown();
 
     bool pickUp();
@@ -26,18 +28,34 @@ class Chopstick {
 class Philosopher {
   public:
     int id;
+    int state;
+    int currNum;
+    //long foodWaitTime;
     Chopstick *left_chopstick;
     Chopstick *right_chopstick;
 
     Philosopher(int id, Chopstick *left_chopstick, Chopstick *right_chopstick);
 
+    ~Philosopher();
+
     void think();
 
     void eat();
 
-    void wait();
+    void wait(int wait_time);
 
-    void think_and_eat();
+    void hungry();
+
+};
+
+class Counter {
+  public:
+    long count;
+    mutex *lock;
+
+    Counter(mutex *lock);
+
+    long getAndIncrement();
 };
 
 #endif
