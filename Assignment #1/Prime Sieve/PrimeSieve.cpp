@@ -69,15 +69,15 @@ int main() {
 
   int stop = clock();
 
-  int numMaxPrimes = 0;
+  int currNumMaxPrimes = NUM_TOP_PRIMES - 1;
 
   for(int i = MAX_PRIME; i >= 0; i--)
     if(primes[i]){
       prime_sum += i;
       num_primes++;
 
-      if(numMaxPrimes < NUM_TOP_PRIMES)
-        topPrimes[numMaxPrimes++] = i;
+      if(currNumMaxPrimes >= 0 && currNumMaxPrimes < NUM_TOP_PRIMES)
+        topPrimes[currNumMaxPrimes--] = i;
     }
 
   f_out << (double)(stop - start) / CLOCKS_PER_SEC << "s " << num_primes << " " << prime_sum << "\n";
