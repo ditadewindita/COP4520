@@ -1,3 +1,7 @@
+// Haerunnisa Dewindita
+// COP4520
+// HA990936
+
 #include <iostream>
 #include <thread>
 #include <vector>
