@@ -31,6 +31,23 @@ Use the following to run the program:
 $ javac LockFreeStack.java LockFreeStackRunner.java
 $ java LockFreeStackRunner
 ```
+And expect an output similar to this example:
+```
+-> Thread 5 failed call to pop() at 1518034954528ms.
+-> Thread 2 failed call to pop() at 1518034954529ms.
+-> Thread 9 failed call to pop() at 1518034954529ms.
+-> Thread 3 pushed 189 at 1518034954529ms.
+-> Thread 0 popped 189 at 1518034954529ms.
+-> Thread 8 failed call to pop() at 1518034954529ms.
+-> Thread 1 failed call to pop() at 1518034954528ms.
+-> Thread 7 pushed 181 at 1518034954529ms.
+-> Thread 4 pushed 268 at 1518034954529ms.
+-> Thread 6 failed call to pop() at 1518034954528ms.
+-> Stack contents:
+181
+268
+Runtime: 4ms.
+```
 ## Comparisons
 The transition from lock based to lock free proved to show heavily improved success rates.
 Although the execution time bumped up with the lock free implementation, it was only by less than a handful of milliseconds.
