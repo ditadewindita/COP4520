@@ -41,12 +41,14 @@ public class LockFreeStack<T> {
     Node<T> newNode = new Node<>(x);
     Node<T> currHead;
 
-    do {
+    while(true) {
       currHead = this.head.get();
       newNode.next = currHead;
-
       numOps.getAndIncrement();
-    } while(!head.compareAndSet(currHead, newNode));
+
+      if(head.compareAndSet(currHead, newNode))
+        break;
+    }
 
     return true;
   }
@@ -55,7 +57,7 @@ public class LockFreeStack<T> {
     Node<T> currHead;
     Node<T> newHead;
 
-    do {
+    while(true) {
       currHead = this.head.get();
 
       if(currHead == null)
@@ -64,9 +66,11 @@ public class LockFreeStack<T> {
       newHead = currHead.next;
       numOps.getAndIncrement();
 
-    } while(!head.compareAndSet(currHead, newHead));
+      if(head.compareAndSet(currHead, newHead))
+        break;
+    }
 
-    return currHead.val;
+    return currHead.getValue();
   }
 
   public int getNumOps() {
