@@ -1,19 +1,12 @@
+// Haerunnisa Dewindita
+// COP4520, Spring 2018
+// HA990936
+
 import java.util.concurrent.locks.*;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.*;
 import java.lang.*;
 import java.io.*;
-
-// compare and swap instruction needed so can atomically read and write
-// atomic reference cause thread-safe
-// volatile = makes sure all threads refer to the master copy of a variable
-
-// Volatile variables share the visibility features of synchronized, but none
-// of the atomicity features. This means that threads will automatically see the
-// most up-to-date value for volatile variables. They can be used to provide
-// thread safety, but only in a very restricted set of cases: those that do not
-// impose constraints between multiple variables or between a variable's current
-// value and its future values.
 
 class Node<T> {
   T val;
@@ -41,11 +34,15 @@ public class LockFreeStack<T> {
     Node<T> newNode = new Node<>(x);
     Node<T> currHead;
 
+    // While the head pointer of the stack is something we do not expect, keep
+    // trying to push
     while(true) {
       currHead = this.head.get();
       newNode.next = currHead;
       numOps.getAndIncrement();
 
+      // If the stack's current head is something we expect, then swap and
+      // complete the push operation
       if(head.compareAndSet(currHead, newNode))
         break;
     }
@@ -57,15 +54,19 @@ public class LockFreeStack<T> {
     Node<T> currHead;
     Node<T> newHead;
 
+    // While we're accessing a head that's not expected, keep trying!
     while(true) {
       currHead = this.head.get();
 
+      // If stack is empty, leave it be!
       if(currHead == null)
         return null;
 
       newHead = currHead.next;
       numOps.getAndIncrement();
 
+      // If the head is something we expected, then swap the nodes and complete
+      // the operation
       if(head.compareAndSet(currHead, newHead))
         break;
     }

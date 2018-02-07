@@ -8,19 +8,7 @@ import java.util.concurrent.*;
 import java.lang.*;
 import java.io.*;
 
-// compare and swap instruction needed so can atomically read and write
-// atomic reference cause thread-safe
-// volatile = makes sure all threads refer to the master copy of a variable
-
-// Volatile variables share the visibility features of synchronized, but none
-// of the atomicity features. This means that threads will automatically see the
-// most up-to-date value for volatile variables. They can be used to provide
-// thread safety, but only in a very restricted set of cases: those that do not
-// impose constraints between multiple variables or between a variable's current
-// value and its future values.
-
-// Current Runnable implements the stack to hold INTEGERS, and prints out
-// data to keep track of the stack's activities
+// Current Runnable implements the stack to hold INTEGERS and randomizes the data
 class LockFreeRunnable implements Runnable {
   private static final int PUSH_OP = 0;
   private static final int POP_OP = 1;
