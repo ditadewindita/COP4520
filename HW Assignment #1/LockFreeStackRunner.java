@@ -8,20 +8,6 @@ import java.util.concurrent.*;
 import java.lang.*;
 import java.io.*;
 
-// PUSH
-// - acquires lock
-// - allocate new node n w/ given x value
-// - n->next = head
-// - head = n->next
-// - numOps++
-
-// POP
-// - acquires lock
-// - if empty stack, release lock and return null
-// - retireve head
-// - head = n->next
-// - numOps++
-
 // compare and swap instruction needed so can atomically read and write
 // atomic reference cause thread-safe
 // volatile = makes sure all threads refer to the master copy of a variable
@@ -32,79 +18,6 @@ import java.io.*;
 // thread safety, but only in a very restricted set of cases: those that do not
 // impose constraints between multiple variables or between a variable's current
 // value and its future values.
-
-class Node<T> {
-  T val;
-  Node<T> next;
-
-  public Node(T val) {
-    this.val = val;
-  }
-
-  public T getValue() {
-    return this.val;
-  }
-}
-
-class LockFreeStack<T> {
-  AtomicReference<Node<T>> head;
-  AtomicInteger numOps;
-
-  public LockFreeStack() {
-    head = new AtomicReference<Node<T>>();
-    numOps = new AtomicInteger(0);
-  }
-
-  public boolean push(T x) {
-    Node<T> newNode = new Node<>(x);
-    Node<T> currHead;
-
-    do {
-      currHead = this.head.get();
-      newNode.next = currHead;
-
-      numOps.getAndIncrement();
-    } while(!head.compareAndSet(currHead, newNode));
-
-    return true;
-  }
-
-  public T pop() {
-    Node<T> currHead;
-    Node<T> newHead;
-
-    do {
-      currHead = this.head.get();
-
-      if(currHead == null)
-        return null;
-
-      newHead = currHead.next;
-      numOps.getAndIncrement();
-
-    } while(!head.compareAndSet(currHead, newHead));
-
-    return currHead.val;
-  }
-
-  public int getNumOps() {
-    return this.numOps.get();
-  }
-
-  public void printStack() {
-    Node<T> temp = this.head.get();
-
-    System.out.println("-> Stack contents:");
-
-    if(temp == null)
-      System.out.println("EMPTY");
-
-    while(temp != null) {
-      System.out.println(temp.getValue());
-      temp = temp.next;
-    }
-  }
-}
 
 // Current Runnable implements the stack to hold INTEGERS, and prints out
 // data to keep track of the stack's activities
@@ -125,19 +38,21 @@ class LockFreeRunnable implements Runnable {
 
     if(operation == PUSH_OP) {
       boolean push = stack.get().push(randomNum);
+      long time = System.currentTimeMillis();
 
       if(push)
-        System.out.println("-> Thread " + this.id + " pushed " + randomNum + ".");
+        System.out.println("-> Thread " + this.id + " pushed " + randomNum + " at " + time + "ms.");
       else
-        System.out.println("-> Thread " + this.id + " failed call to push().");
+        System.out.println("-> Thread " + this.id + " failed call to push() " + " at " + time + "ms.");
     }
     else {
       Integer pop = stack.get().pop();
+      long time = System.currentTimeMillis();
 
       if(pop != null)
-        System.out.println("-> Thread " + this.id + " popped " + pop + ".");
+        System.out.println("-> Thread " + this.id + " popped " + pop + " at " + time + "ms.");
       else
-        System.out.println("-> Thread " + this.id + " failed call to pop().");
+        System.out.println("-> Thread " + this.id + " failed call to pop()" + " at " + time + "ms.");
     }
   }
 }
