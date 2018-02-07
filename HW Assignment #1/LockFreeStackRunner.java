@@ -56,27 +56,6 @@ class LockFreeRunnable implements Runnable {
     }
   }
 }
-// LOCKS
-// PUSH
-// 10 threads
-// avg 4 ms
-// avg 3 items successfully pushed
-
-// POP
-// 10 threads
-// avg 3.3333ms
-// avg 7 items successfully popped
-
-// LOCK-FREE
-// PUSH
-// 10 threads
-// avg 5.4 ms
-// avg 10 items successfully pushed
-
-// POP
-// 10 threads
-// avg 6.4 ms
-// avg 10 items successfully popped
 
 public class LockFreeStackRunner {
   public static final int MIN_NUM = 0;
