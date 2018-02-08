@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.*;
 import java.util.concurrent.*;
 import java.lang.*;
 import java.io.*;
+import java.util.*;
 
 // Current Runnable implements the stack to hold INTEGERS and randomizes the data
 class LockFreeRunnable implements Runnable {
@@ -21,10 +22,14 @@ class LockFreeRunnable implements Runnable {
   }
 
   public void run() {
-    int randomNum = LockFreeStackRunner.getRandomNumber();
     int operation = (int)(Math.random() * 2);
 
     if(operation == PUSH_OP) {
+      // Since this code is running with a preloaded bank of nodes,
+      // it doesn't matter what number is pushed onto the stack in this
+      // call because getNewNode() is the method dictating the value
+      // of our nodes!
+      int randomNum = LockFreeStackRunner.getRandomNumber();
       boolean push = stack.get().push(randomNum);
       long time = System.currentTimeMillis();
 
@@ -45,10 +50,11 @@ class LockFreeRunnable implements Runnable {
   }
 }
 
-public class LockFreeStackRunner {
+public class LockFreeStackRunner<T> {
   public static final int MIN_NUM = 0;
   public static final int MAX_NUM = 300;
   public static final int NUM_THREADS = 10;
+  public static final int MAX_NUM_NODES = 1000;
 
   public static int getRandomNumber() {
     return ThreadLocalRandom.current().nextInt(MIN_NUM, MAX_NUM);

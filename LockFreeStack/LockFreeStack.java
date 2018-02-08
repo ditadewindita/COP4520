@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.*;
 import java.util.concurrent.*;
 import java.lang.*;
 import java.io.*;
+import java.util.*;
 
 class Node<T> {
   T val;
@@ -19,25 +20,45 @@ class Node<T> {
   public T getValue() {
     return this.val;
   }
+
+  public void setValue(T x) {
+    this.val = x;
+  }
 }
 
 public class LockFreeStack<T> {
   AtomicReference<Node<T>> head;
   AtomicInteger numOps;
 
+  // Node bank related data structures
+  AtomicInteger newNodeIndex;
+  ArrayList<Node<T>> nodeBank;
+
   public LockFreeStack() {
     head = new AtomicReference<Node<T>>();
     numOps = new AtomicInteger(0);
+    newNodeIndex = new AtomicInteger(0);
+    nodeBank = new ArrayList<>(LockFreeStackRunner.MAX_NUM_NODES);
+
+    // Fill up our array with a bunch of nodes!
+    prepareNodeBank();
+  }
+
+  public Node<T> getNewNode() {
+    return nodeBank.get(newNodeIndex.getAndIncrement() % LockFreeStackRunner.MAX_NUM_NODES);
+  }
+
+  // Method to prepare a bunch of new nodes with NULL values to avoid 'dealing'
+  // with memory protection
+  public void prepareNodeBank() {
+    for(int i = 0; i < LockFreeStackRunner.MAX_NUM_NODES; i++)
+      nodeBank.add(new Node<>(null));
   }
 
   public boolean push(T x) {
-    Node<T> newNode;
-
-    // Make sure a new node is created in isolation from other threads to
-    // protect memory allocation
-    synchronized(this) {
-      newNode = new Node<>(x);
-    }
+    // Get a fresh new node and assign it with the value passed
+    Node<T> newNode = getNewNode();
+    newNode.setValue(x);
 
     Node<T> currHead;
 
@@ -85,6 +106,10 @@ public class LockFreeStack<T> {
 
   public int getNumOps() {
     return this.numOps.get();
+  }
+
+  public Node<T> getHead() {
+    return this.head.get();
   }
 
   public void printStack() {
