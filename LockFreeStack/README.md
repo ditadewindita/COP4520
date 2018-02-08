@@ -48,8 +48,7 @@ And expect an output similar to this example:
 Runtime: 4ms.
 ```
 ## Comparisons
-The transition from lock based to lock free proved to show heavily improved success rates.
-Although the execution time bumped up with the lock free implementation, it was only by less than a handful of milliseconds.
+The transition from lock based to lock free proved to show heavily improved success rates and stable execution times.
 
 In an run with 10 threads, a push/pop operation on a lock based stack had the following stats:
 ```
@@ -59,8 +58,8 @@ pop() -> ~3ms execution, 70% success rate
 
 In the same run with the lock free stack, the statistics came out as follows:
 ```
-push() -> ~5.4ms execution, 100% success rate
-pop() -> ~6.4ms execution, 100% success rate
+push() -> ~3ms execution, 100% success rate
+pop() -> ~3ms execution, 100% success rate
 ```
 
 \*The above `pop()` operations were made consecutively on a stack pre-loaded with
