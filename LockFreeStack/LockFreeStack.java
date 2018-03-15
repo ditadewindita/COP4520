@@ -64,17 +64,11 @@ public class LockFreeStack<T> {
 
     // While the head pointer of the stack is something we do not expect, keep
     // trying to push
-    while(true) {
+
+    do {
       currHead = this.head.get();
       newNode.next = currHead;
-      int tempOps = numOps.get();
-
-      // If the stack's current head is something we expect AND there
-      // were no new operations made by another thread, swap and
-      // complete the push operation
-      if(numOps.compareAndSet(tempOps, tempOps + 1) && head.compareAndSet(currHead, newNode))
-        break;
-    }
+    } while(!head.compareAndSet(currHead, newNode));
 
     return true;
   }
@@ -84,7 +78,7 @@ public class LockFreeStack<T> {
     Node<T> newHead;
 
     // While we're accessing a head that's not expected, keep trying!
-    while(true) {
+    do {
       currHead = this.head.get();
 
       // If stack is empty, leave it be!
@@ -92,14 +86,7 @@ public class LockFreeStack<T> {
         return null;
 
       newHead = currHead.next;
-      int tempOps = numOps.get();
-
-      // If the head is something we expected AND there were no new
-      // operations made by another thread, swap the nodes and complete
-      // the operation
-      if(numOps.compareAndSet(tempOps, tempOps + 1) && head.compareAndSet(currHead, newHead))
-        break;
-    }
+    } while(!head.compareAndSet(currHead, newHead));
 
     return currHead.getValue();
   }
