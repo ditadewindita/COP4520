@@ -65,7 +65,7 @@ pop() -> ~3ms execution, 100% success rate
 \*The above `pop()` operations were made consecutively on a stack pre-loaded with
 enough nodes to pop off.
 
-###Notes
+### Notes
 A bank of pre-made nodes was used for this implementation to avoid chances of memory
 protection occurrences. An ArrayList is made with MAX_NUM_NODES (initially at 1000) nodes with `null` values. The stack's `push()` operation will grab an allocated
 node from the ArrayList and set it's value to the value passed into the call to push.
