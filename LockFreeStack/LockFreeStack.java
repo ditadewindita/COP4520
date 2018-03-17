@@ -187,6 +187,17 @@ public class LockFreeStack<T> {
     return numOps.get();
   }
 
+  public int getSize() {
+    Descriptor<T> currDesc = desc.get();
+    int size = currDesc.getSize();
+
+    // Take into account if there is a pending write operation
+    if(!currDesc.pending.getCompleted())
+      size--;
+
+    return size;
+  }
+
   public void printStack() {
     Node<T> temp = head.get();
 
