@@ -18,25 +18,69 @@ class Node<T> {
   }
 
   public T getValue() {
-    return this.val;
+    return val;
   }
 
   public void setValue(T x) {
-    this.val = x;
+    val = x;
+  }
+}
+
+class Descriptor<T> {
+  AtomicInteger size;
+  WriteDescriptor<T> pending;
+
+  public Descriptor(int size, WriteDescriptor<T> pending) {
+    this.size = new AtomicInteger(size);
+    this.pending = pending;
+  }
+
+  public int getSize() {
+    return size.get();
+  }
+}
+
+class WriteDescriptor<T> {
+  Node<T> oldVal;
+  Node<T> newVal;
+  AtomicReference<Node<T>> currHead;
+  AtomicBoolean completed;
+
+  public WriteDescriptor(Node<T> oldVal, Node<T> newVal, Node<T> currHead) {
+    this.oldVal = oldVal;
+    this.newVal = newVal;
+    this.currHead = new AtomicReference<>(currHead);
+    this.completed = new AtomicBoolean(false);
+  }
+
+  public Node<T> getCurrHead() {
+    return currHead.get();
+  }
+
+  public boolean getCompleted() {
+    return completed.get();
+  }
+
+  public void setCompleted(boolean bool) {
+    completed.set(bool);
   }
 }
 
 public class LockFreeStack<T> {
   AtomicReference<Node<T>> head;
   AtomicInteger numOps;
+  AtomicReference<Descriptor<T>> desc;
 
   // Node bank related data structures
   AtomicInteger newNodeIndex;
   ArrayList<Node<T>> nodeBank;
 
   public LockFreeStack() {
-    head = new AtomicReference<Node<T>>();
+    head = new AtomicReference<>();
     numOps = new AtomicInteger(0);
+    desc = new AtomicReference<>(new Descriptor<>(0, null));
+
+    // Node bank related initialization
     newNodeIndex = new AtomicInteger(0);
     nodeBank = new ArrayList<>(LockFreeStackRunner.MAX_NUM_NODES);
 
@@ -61,14 +105,27 @@ public class LockFreeStack<T> {
     newNode.setValue(x);
 
     Node<T> currHead;
+    Descriptor<T> currDesc;
+    Descriptor<T> nextDesc;
+    WriteDescriptor<T> writeOp;
 
     // While the head pointer of the stack is something we do not expect, keep
     // trying to push
-
     do {
-      currHead = this.head.get();
+      currDesc = desc.get();
+      completeWrite(currDesc.pending);
+
+      currHead = head.get();
       newNode.next = currHead;
-    } while(!head.compareAndSet(currHead, newNode));
+
+      writeOp = new WriteDescriptor<>(currHead, newNode, head.get());
+      nextDesc = new Descriptor<>(currDesc.getSize() + 1, writeOp);
+
+      numOps.getAndIncrement();
+
+    } while(!desc.compareAndSet(currDesc, nextDesc));
+
+    completeWrite(nextDesc.pending);
 
     return true;
   }
@@ -76,31 +133,48 @@ public class LockFreeStack<T> {
   public T pop() {
     Node<T> currHead;
     Node<T> newHead;
+    Descriptor<T> currDesc;
+    Descriptor<T> nextDesc;
+    WriteDescriptor<T> writeOp;
 
     // While we're accessing a head that's not expected, keep trying!
     do {
-      currHead = this.head.get();
+      currDesc = desc.get();
+      completeWrite(currDesc.pending);
+
+      currHead = head.get();
 
       // If stack is empty, leave it be!
       if(currHead == null)
         return null;
 
       newHead = currHead.next;
-    } while(!head.compareAndSet(currHead, newHead));
+      writeOp = new WriteDescriptor<>(currHead, newHead, head.get());
+      nextDesc = new Descriptor<>(currDesc.getSize() - 1, writeOp);
+
+      numOps.getAndIncrement();
+
+    } while(!desc.compareAndSet(currDesc, nextDesc));
+
+    completeWrite(nextDesc.pending);
 
     return currHead.getValue();
   }
 
-  public int getNumOps() {
-    return this.numOps.get();
+  public void completeWrite(WriteDescriptor<T> writeOp) {
+    if(writeOp != null && !writeOp.getCompleted()) {
+      // ?
+      head.compareAndSet(writeOp.oldVal, writeOp.newVal);
+      writeOp.setCompleted(true);
+    }
   }
 
-  public Node<T> getHead() {
-    return this.head.get();
+  public int getNumOps() {
+    return numOps.get();
   }
 
   public void printStack() {
-    Node<T> temp = this.head.get();
+    Node<T> temp = head.get();
 
     System.out.println("-> Stack contents:");
 
