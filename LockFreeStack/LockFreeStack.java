@@ -100,25 +100,30 @@ public class LockFreeStack<T> {
   }
 
   public boolean push(T x) {
-    // Get a fresh new node and assign it with the value passed
-    Node<T> newNode = getNewNode();
-    newNode.setValue(x);
-
     Node<T> currHead;
     Descriptor<T> currDesc;
     Descriptor<T> nextDesc;
     WriteDescriptor<T> writeOp;
 
+    // Get a fresh new node and assign it with the value passed
+    Node<T> newNode = getNewNode();
+    newNode.setValue(x);
+
     // While the head pointer of the stack is something we do not expect, keep
     // trying to push
     do {
+      // Complete any pending writes
       currDesc = desc.get();
       completeWrite(currDesc.pending);
 
+      // Signify new head for push()
       currHead = head.get();
       newNode.next = currHead;
 
+      // Create new WriteDescriptor to switch stack's head
       writeOp = new WriteDescriptor<>(currHead, newNode, head.get());
+
+      // Increment size with write descriptor
       nextDesc = new Descriptor<>(currDesc.getSize() + 1, writeOp);
 
       numOps.getAndIncrement();
@@ -139,6 +144,7 @@ public class LockFreeStack<T> {
 
     // While we're accessing a head that's not expected, keep trying!
     do {
+      // Complete any pending writes
       currDesc = desc.get();
       completeWrite(currDesc.pending);
 
@@ -148,23 +154,31 @@ public class LockFreeStack<T> {
       if(currHead == null)
         return null;
 
+      // Signify new head after pop()
       newHead = currHead.next;
+
+      // Create new WriteDescriptor to switch stack's head
       writeOp = new WriteDescriptor<>(currHead, newHead, head.get());
+
+      // Decrement size with write descriptor
       nextDesc = new Descriptor<>(currDesc.getSize() - 1, writeOp);
 
       numOps.getAndIncrement();
 
     } while(!desc.compareAndSet(currDesc, nextDesc));
 
+    // Compleye pending writes for newly made descriptor
     completeWrite(nextDesc.pending);
 
     return currHead.getValue();
   }
 
   public void completeWrite(WriteDescriptor<T> writeOp) {
+    // Perform CAS operation only if the write descriptor is pending
     if(writeOp != null && !writeOp.getCompleted()) {
-      // ?
       head.compareAndSet(writeOp.oldVal, writeOp.newVal);
+
+      // Reset completed boolean
       writeOp.setCompleted(true);
     }
   }
