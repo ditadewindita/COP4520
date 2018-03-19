@@ -174,8 +174,11 @@ public class LockFreeStack<T> {
   }
 
   public void completeWrite(WriteDescriptor<T> writeOp) {
+    if(writeOp == null)
+      return;
+
     // Perform CAS operation only if the write descriptor is pending
-    if(writeOp != null && !writeOp.getCompleted()) {
+    if(!writeOp.getCompleted()) {
       head.compareAndSet(writeOp.oldVal, writeOp.newVal);
 
       // Reset completed boolean
@@ -187,15 +190,14 @@ public class LockFreeStack<T> {
     return numOps.get();
   }
 
-  public int getSize() {
+  public int size() {
     Descriptor<T> currDesc = desc.get();
-    int size = currDesc.getSize();
 
     // Take into account if there is a pending write operation
     if(!currDesc.pending.getCompleted())
-      size--;
+      return currDesc.size.decrementAndGet();
 
-    return size;
+    return currDesc.size.get();
   }
 
   public void printStack() {
