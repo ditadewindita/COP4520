@@ -193,6 +193,9 @@ public class LockFreeStack<T> {
   public int size() {
     Descriptor<T> currDesc = desc.get();
 
+    if(currDesc.pending == null)
+      return 0;
+
     // Take into account if there is a pending write operation
     if(!currDesc.pending.getCompleted())
       return currDesc.size.decrementAndGet();

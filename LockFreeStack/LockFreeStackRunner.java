@@ -15,39 +15,42 @@ class LockFreeRunnable implements Runnable {
   private static final int POP_OP = 1;
   private static final int SIZE_OP = 2;
   private final int id;
-  private int currOp;
+  // private int currOp;
   public AtomicReference<LockFreeStack<Integer>> stack;
 
-  public LockFreeRunnable(LockFreeStack<Integer> stack, int id, int currOp) {
+  public LockFreeRunnable(LockFreeStack<Integer> stack, int id) {
     this.stack = new AtomicReference<>(stack);
     this.id = id;
-    this.currOp = currOp;
+    // this.currOp = currOp;
   }
 
   public void run() {
-    int operation = this.currOp; // (int)(Math.random() * 3);
+    int operation = (int)(Math.random() * 3);
 
     if(operation == PUSH_OP) {
       int randomNum = LockFreeStackRunner.getRandomNumber();
       boolean push = stack.get().push(randomNum);
-      // long time = System.nanoTime();
-      //
-      // if(push)
-      //   System.out.println("-> Thread " + this.id + " pushed " + randomNum + " at " + time + "ms.");
-      // else
-      //   System.out.println("-> Thread " + this.id + " failed call to push() " + " at " + time + "ms.");
+      long time = System.currentTimeMillis();
+
+      if(push)
+        System.out.println("-> Thread " + this.id + " pushed " + randomNum + " at " + time + "ms.");
+      else
+        System.out.println("-> Thread " + this.id + " failed call to push() " + " at " + time + "ms.");
     }
     else if(operation == POP_OP){
       Integer pop = stack.get().pop();
-      // long time = System.nanoTime();
-      //
-      // if(pop != null)
-      //   System.out.println("-> Thread " + this.id + " popped " + pop + " at " + time + "ms.");
-      // else
-      //   System.out.println("-> Thread " + this.id + " failed call to pop()" + " at " + time + "ms.");
+      long time = System.currentTimeMillis();
+
+      if(pop != null)
+        System.out.println("-> Thread " + this.id + " popped " + pop + " at " + time + "ms.");
+      else
+        System.out.println("-> Thread " + this.id + " failed call to pop()" + " at " + time + "ms.");
     }
     else {
       int size = stack.get().size();
+      long time = System.currentTimeMillis();
+
+      System.out.println("-> Thread " + this.id + " checked size as " + size + " at " + time + "ms.");
     }
   }
 }
@@ -65,59 +68,59 @@ public class LockFreeStackRunner<T> {
   public static void main(String[] args) throws Exception {
     Thread threads[] = new Thread[NUM_THREADS];
     LockFreeStack<Integer> lockFreeStack = new LockFreeStack<>();
-    int currNumThreads = 1;
+    // int currNumThreads = 1;
 
-    // Filenames
-    String files[] = {"push.csv", "pop.csv", "size.csv"};
+    // // Filenames
+    // String files[] = {"push.csv", "pop.csv", "size.csv"};
+    //
+    // for(int k = 0; k < files.length; k++) {
+    //   // Create a new file if needed
+    //   File newFile = new File(files[k]);
+    //   newFile.createNewFile();
+    //
+    //   // Set headers
+    //   PrintWriter pw = new PrintWriter(newFile);
+    //   StringBuilder sb = new StringBuilder();
+    //   sb.append("numThreads");
+    //   sb.append(',');
+    //   sb.append("executionTime");
+    //   sb.append('\n');
+    //
+    //   // If it is a pop or size operation, preload the stack with nodes
+    //   if(k == 1 || k == 2) {
+    //     for(int j = 0; j < MAX_NUM_NODES; j++) {
+    //       lockFreeStack.push(getRandomNumber());
+    //     }
+    //   }
+    //
+    //   for(int j = currNumThreads; j <= NUM_THREADS; j *= 2) {
+        long start = System.currentTimeMillis();
 
-    for(int k = 0; k < files.length; k++) {
-      // Create a new file if needed
-      File newFile = new File(files[k]);
-      newFile.createNewFile();
-
-      // Set headers
-      PrintWriter pw = new PrintWriter(newFile);
-      StringBuilder sb = new StringBuilder();
-      sb.append("numThreads");
-      sb.append(',');
-      sb.append("executionTime");
-      sb.append('\n');
-
-      // If it is a pop or size operation, preload the stack with nodes
-      if(k == 1 || k == 2) {
-        for(int j = 0; j < MAX_NUM_NODES; j++) {
-          lockFreeStack.push(getRandomNumber());
-        }
-      }
-
-      for(int j = currNumThreads; j <= NUM_THREADS; j *= 2) {
-        long start = System.nanoTime();
-
-        for(int i = 0; i < j; i++) {
-          threads[i] = new Thread(new LockFreeRunnable(lockFreeStack, i, k));
+        for(int i = 0; i < NUM_THREADS; i++) {
+          threads[i] = new Thread(new LockFreeRunnable(lockFreeStack, i));
           threads[i].start();
         }
 
-        for(int i = 0; i < j; i++) {
+        for(int i = 0; i < NUM_THREADS; i++) {
           threads[i].join();
         }
 
-        long stop = System.nanoTime();
+        long stop = System.currentTimeMillis();
 
-        sb.append(j);
-        sb.append(',');
-        sb.append((double)(stop - start) / 1000000.0);
-        sb.append('\n');
-      }
-
-      pw.write(sb.toString());
-      pw.close();
-      System.out.println("Finished writing " + files[k]);
-    }
-
-    // System.out.println();
-    // lockFreeStack.printStack();
+    //     sb.append(j);
+    //     sb.append(',');
+    //     sb.append((double)(stop - start) / 1000000.0);
+    //     sb.append('\n');
+    //   }
     //
-    // System.out.println("\nRuntime: " + (stop - start) + "ms.");
+    //   pw.write(sb.toString());
+    //   pw.close();
+    //   System.out.println("Finished writing " + files[k]);
+    // }
+
+    System.out.println();
+    lockFreeStack.printStack();
+
+    System.out.println("\nRuntime: " + (stop - start) + "ms.");
   }
 }
