@@ -23,11 +23,20 @@ feature changes atomically. Those atomic variables within the stack only change
 if another thread does not modify the same memory location it's handling, therefore
 the method call is guaranteed to fail and not produce ambiguous results.
 
+#### Linearization Points
+Linearization points can be identified by statements whose results can be visible
+by other threads after its execution. Since the stack utilizes descriptors to modify its
+components, the linearization points are whenever a CAS operation succeeds on a
+descriptor object in `push()`, `pop()`, and `size()`.
+
 #### Progress
 This stack's use of CAS means that its operations are executed in a predictable
-manner, which satisfies linearizability's non-blocking property. By not having unexpected delays, some thread `x` does not block another thread `y` from making progress.
-
-#### Efficiency
+manner, which satisfies linearizability's non-blocking property. By not having unexpected delays, some thread `x` does not block another thread `y` from making progress. The
+stack operations also rely on a descriptor object, specifically a `WriteDescriptor`, to
+change the stack's contents. Since the `WriteDescriptor` only performs its CAS operation
+if it is in a _pending_ state, any number of threads can access this descriptor at one
+time and one is guaranteed to succeed. The success of at least one thread shows that
+the system as a whole can make progress.
 
 ## Structure
 This stack has two separate files: `LockFreeStack.java` and `LockFreeStackRunner.java`.
@@ -45,25 +54,44 @@ $ java LockFreeStackRunner
 ```
 And expect an output similar to this example:
 ```
--> Thread 5 failed call to pop() at 1521253087445ms.
--> Thread 2 failed call to pop() at 1521253087445ms.
--> Thread 4 failed call to pop() at 1521253087445ms.
--> Thread 0 pushed 120 at 1521253087447ms.
--> Thread 3 pushed 203 at 1521253087447ms.
--> Thread 7 pushed 105 at 1521253087447ms.
--> Thread 8 pushed 68 at 1521253087447ms.
--> Thread 6 pushed 286 at 1521253087447ms.
--> Thread 9 popped 253 at 1521253087447ms.
--> Thread 1 pushed 253 at 1521253087447ms.
+-> Thread 9 checked size as 0 at 1521487158326ms.
+-> Thread 11 failed call to pop() at 1521487158326ms.
+-> Thread 7 failed call to pop() at 1521487158326ms.
+-> Thread 8 failed call to pop() at 1521487158326ms.
+-> Thread 1 checked size as 0 at 1521487158327ms.
+-> Thread 10 failed call to pop() at 1521487158326ms.
+-> Thread 0 failed call to pop() at 1521487158326ms.
+-> Thread 13 failed call to pop() at 1521487158327ms.
+-> Thread 2 failed call to pop() at 1521487158327ms.
+-> Thread 12 checked size as 0 at 1521487158327ms.
+-> Thread 3 checked size as 0 at 1521487158326ms.
+-> Thread 15 checked size as 0 at 1521487158328ms.
+-> Thread 16 checked size as 0 at 1521487158328ms.
+-> Thread 17 checked size as 0 at 1521487158329ms.
+-> Thread 18 failed call to pop() at 1521487158329ms.
+-> Thread 6 pushed 292 at 1521487158329ms.
+-> Thread 5 pushed 186 at 1521487158329ms.
+-> Thread 4 pushed 251 at 1521487158329ms.
+-> Thread 19 pushed 267 at 1521487158329ms.
+-> Thread 14 pushed 16 at 1521487158329ms.
+-> Thread 20 popped 267 at 1521487158329ms.
+-> Thread 21 checked size as 4 at 1521487158330ms.
+-> Thread 22 checked size as 4 at 1521487158330ms.
+-> Thread 23 popped 16 at 1521487158330ms.
+-> Thread 24 checked size as 3 at 1521487158330ms.
+-> Thread 25 popped 251 at 1521487158330ms.
+-> Thread 26 pushed 44 at 1521487158331ms.
+-> Thread 27 popped 44 at 1521487158331ms.
+-> Thread 28 popped 186 at 1521487158331ms.
+-> Thread 29 pushed 96 at 1521487158331ms.
+-> Thread 30 checked size as 2 at 1521487158331ms.
+-> Thread 31 checked size as 2 at 1521487158331ms.
 
 -> Stack contents:
-203
-105
-68
-286
-120
+96
+292
 
-Runtime: 3ms.
+Runtime: 7ms.
 ```
 <!-- ## Comparisons
 The transition from lock based to lock free proved to show heavily improved success rates and stable execution times.
