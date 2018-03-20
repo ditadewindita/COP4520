@@ -41,8 +41,5 @@ This stack's use of CAS means that its operations are executed in a predictable
 manner, which satisfies linearizability's non-blocking property. By not having unexpected delays, some thread `x` does not block another thread `y` from making progress.
 
 ## Performance
-
-<center>
-  ![Performance Graph](https://raw.githubusercontent.com/ditadewindita/COP4520/rdcss/RDCSS/graph.png?token=AMmCer7ZSAbw3ebbN7weWuMxA7XvWOgtks5aubuTwA%3D%3D)
-  _Graph of the operations of this lock-free stack accross 1, 2, 4, 8, 16, and 32 threads_
-</center>
+![Performance Graph](https://raw.githubusercontent.com/ditadewindita/COP4520/rdcss/RDCSS/graph.png?token=AMmCer7ZSAbw3ebbN7weWuMxA7XvWOgtks5aubuTwA%3D%3D)
+_Graph of the operations of this lock-free stack across 1, 2, 4, 8, 16, and 32 threads_
