@@ -66,7 +66,7 @@ class WriteDescriptor<T> {
   }
 }
 
-public class LockFreeStack<T> {
+class LockFreeStack<T> {
   AtomicReference<Node<T>> head;
   AtomicInteger numOps;
   AtomicReference<Descriptor<T>> desc;
@@ -82,14 +82,14 @@ public class LockFreeStack<T> {
 
     // Node bank related initialization
     newNodeIndex = new AtomicInteger(0);
-    nodeBank = new ArrayList<>(LockFreeStackRunner.MAX_NUM_NODES);
+    nodeBank = new ArrayList<>(EliminationBackoffStackRunner.MAX_NUM_NODES);
 
     // Fill up our array with a bunch of nodes!
     prepareNodeBank();
   }
 
   public Node<T> getNewNode() {
-    return nodeBank.get(newNodeIndex.getAndIncrement() % LockFreeStackRunner.MAX_NUM_NODES);
+    return nodeBank.get(newNodeIndex.getAndIncrement() % EliminationBackoffStackRunner.MAX_NUM_NODES);
   }
 
   // Method to prepare a bunch of new nodes with NULL values to avoid 'dealing'
@@ -215,5 +215,208 @@ public class LockFreeStack<T> {
       System.out.println(temp.getValue());
       temp = temp.next;
     }
+  }
+}
+
+class RangePolicy {
+  int maxRange;
+  int currentRange;
+
+  public RangePolicy(int maxRange) {
+    this.currentRange = 1;
+    this.maxRange = maxRange;
+  }
+
+  public void recordEliminationSuccess() {
+    if(currentRange < maxRange)
+      currentRange++;
+  }
+
+  public void recordEliminationTimeout() {
+    if(currentRange > 1)
+      currentRange--;
+  }
+
+  public int getRange() {
+    return currentRange;
+  }
+}
+
+class LockFreeExchanger<T> {
+  static final int EMPTY = 0;
+  static final int WAITING = 1;
+  static final int BUSY = 2;
+
+  AtomicStampedReference<T> slot;
+
+  public LockFreeExchanger() {
+    this.slot = new AtomicStampedReference<T>(null, 0);
+  }
+
+  public T exchange(T myItem, long timeout, TimeUnit unit) throws TimeoutException {
+    long nanos = unit.toNanos(timeout);
+    long timeBound = System.nanoTime() + nanos;
+
+    int[] stampHolder = {EMPTY};
+
+    while(true) {
+      if(System.nanoTime() > timeBound)
+        throw new TimeoutException();
+
+      T yrItem = slot.get(stampHolder);
+      int stamp = stampHolder[0];
+
+      switch(stamp) {
+        case EMPTY:
+          if(slot.compareAndSet(yrItem, myItem, EMPTY, WAITING)) {
+            while(System.nanoTime() < timeBound) {
+              yrItem = slot.get(stampHolder);
+
+              if(stampHolder[0] == BUSY) {
+                slot.set(null, EMPTY);
+
+                return yrItem;
+              }
+            }
+
+            if(slot.compareAndSet(myItem, null, WAITING, EMPTY)) {
+              throw new TimeoutException();
+            }
+            else {
+              yrItem = slot.get(stampHolder);
+              slot.set(null, EMPTY);
+
+              return yrItem;
+            }
+          }
+          break;
+
+        case WAITING:
+          if(slot.compareAndSet(yrItem, myItem, WAITING, BUSY))
+            return yrItem;
+          break;
+
+        case BUSY:
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+}
+
+class EliminationArray<T> {
+  private static final int duration = 2;
+  ArrayList<LockFreeExchanger<T>> exchanger;
+  Random random;
+
+  public EliminationArray(int capacity) {
+    this.exchanger = new ArrayList<LockFreeExchanger<T>>(capacity);
+
+    for(int i = 0; i < capacity; i++)
+      exchanger.add(new LockFreeExchanger<T>());
+
+    this.random = new Random();
+  }
+
+  public T visit(T value, int range) throws TimeoutException {
+    int slot = random.nextInt(range);
+
+    return exchanger.get(slot).exchange(value, duration, TimeUnit.MILLISECONDS);
+  }
+}
+
+public class EliminationBackoffStack<T> extends LockFreeStack<T> {
+  static final int capacity = EliminationBackoffStackRunner.MAX_NUM_NODES;
+
+  EliminationArray<T> eliminationArray;
+  AtomicInteger size;
+  static ThreadLocal<RangePolicy> policy;
+
+  public EliminationBackoffStack() {
+    this.eliminationArray = new EliminationArray<T>(capacity);
+    this.size = new AtomicInteger(0);
+    this.policy = new ThreadLocal<RangePolicy>() {
+      protected synchronized RangePolicy initialValue() {
+        return new RangePolicy(capacity);
+      }
+    };
+  }
+
+  protected boolean tryPush(Node<T> node) {
+    Node<T> currHead = head.get();
+    node.next = currHead;
+
+    return head.compareAndSet(currHead, node);
+  }
+
+  public boolean push(T x) {
+    RangePolicy rangePolicy = policy.get();
+
+    Node<T> node = getNewNode();
+    node.setValue(x);
+
+    while(true) {
+      if(tryPush(node)) {
+        size.getAndIncrement();
+        return true;
+      }
+      else try {
+        T otherValue = eliminationArray.visit(x, rangePolicy.getRange());
+
+        if(otherValue == null) {
+          rangePolicy.recordEliminationSuccess();
+          size.getAndIncrement();
+
+          return true;
+        }
+      } catch (TimeoutException ex) {
+        rangePolicy.recordEliminationTimeout();
+      }
+    }
+  }
+
+  protected Node<T> tryPop() throws EmptyStackException {
+    Node<T> currHead = head.get();
+
+    if(currHead == null)
+      throw new EmptyStackException();
+
+    Node<T> newHead = currHead.next;
+
+    if(head.compareAndSet(currHead, newHead))
+      return currHead;
+
+    return null;
+  }
+
+  public T pop() throws EmptyStackException {
+    RangePolicy rangePolicy = policy.get();
+
+    while(true) {
+      Node<T> returnNode = tryPop();
+
+      if(returnNode != null) {
+        size.getAndDecrement();
+
+        return returnNode.val;
+      } else try {
+        T otherValue = eliminationArray.visit(null, rangePolicy.getRange());
+
+        if(otherValue != null) {
+          rangePolicy.recordEliminationSuccess();
+          size.getAndDecrement();
+
+          return otherValue;
+        }
+      } catch(TimeoutException ex) {
+        rangePolicy.recordEliminationTimeout();
+      }
+    }
+  }
+
+  public int size() {
+    return size.get();
   }
 }

@@ -58,7 +58,7 @@ class LockFreeRunnable implements Runnable {
 public class LockFreeStackRunner<T> {
   public static final int MIN_NUM = 0;
   public static final int MAX_NUM = 300;
-  public static final int NUM_THREADS = 32;
+  public static final int NUM_THREADS = 10;
   public static final int MAX_NUM_NODES = 1000;
 
   public static int getRandomNumber() {
