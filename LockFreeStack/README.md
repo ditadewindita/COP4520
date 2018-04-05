@@ -84,10 +84,8 @@ Runtime: 7ms.
 
 ## Performance
 
-<center>
-  ![Performance Graph](https://raw.githubusercontent.com/ditadewindita/COP4520/lock-free-stack/LockFreeStack/graph.png?token=AMmCeubrlR-o_yMvSvKqGe49dMytzfMhks5atdjUwA%3D%3D)
-  _Graph of the operations of this lock-free stack accross 1, 2, 4, 8, 16, and 32 threads_
-</center>
+![Pop Performance](https://raw.githubusercontent.com/ditadewindita/COP4520/master/LockFreeStack/graph.png)
+_Graph of the operations of this lock-free stack across 1, 2, 4, 8, 16, and 32 threads_
 
 ### Notes
 A bank of pre-made nodes was used for this implementation due to chances of memory
