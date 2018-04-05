@@ -79,7 +79,16 @@ Runtime: 10ms.
 The performance of this stack against the lock-free implementation with descriptor objects are outlined in the graphs below for each operation. The Elimination Backoff method shows better results when scaled because it
 reduces contention at the top of the stack since access to it is restricted through the elimination array.
 
-_Refer to push.png, pop.png, and size.png to see performance results of the stack's operations_
+**Pop**
+![Pop Performance](https://raw.githubusercontent.com/ditadewindita/COP4520/master/Elimination%20Back-Off%20Stack/pop.png)
+
+**Push**
+![Push Performance](https://raw.githubusercontent.com/ditadewindita/COP4520/master/Elimination%20Back-Off%20Stack/push.png)
+
+**Size**
+![Size Performance](https://raw.githubusercontent.com/ditadewindita/COP4520/master/Elimination%20Back-Off%20Stack/size.png)
+
+_*Graph of the operations of this lock-free stack are across 1, 2, 4, 8, 16, and 32 threads_
 
 ### Notes
 A bank of pre-made nodes was used for this implementation due to chances of memory
